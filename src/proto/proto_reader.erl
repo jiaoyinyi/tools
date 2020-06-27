@@ -9,23 +9,21 @@
 -module(proto_reader).
 -author("huangzaoyi").
 
--define(proto_path, "proto/").
-
 %% API
 -export([
-    get_cfgs/0
+    get_cfgs/1
 ]).
 
 %% 获取协议配置
--spec get_cfgs() -> [{atom(), list(), list()}].
-get_cfgs() ->
-    Mods = get_proto_mods(),
+-spec get_cfgs(string()) -> [{atom(), list(), list()}].
+get_cfgs(CfgPath) ->
+    Mods = get_proto_mods(CfgPath),
     get_proto_cfg(Mods).
 
 %% 获取协议定义文件的模块名
--spec get_proto_mods() -> [file:filename_all()].
-get_proto_mods() ->
-    FileNames = filelib:wildcard("*.erl", ?proto_path),
+-spec get_proto_mods(string()) -> [file:filename_all()].
+get_proto_mods(CfgPath) ->
+    FileNames = filelib:wildcard("*.erl", CfgPath),
     [list_to_atom(filename:basename(FileName, ".erl")) || FileName <- FileNames].
 
 %% 获取协议配置文件内容

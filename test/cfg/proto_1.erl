@@ -19,7 +19,6 @@ inc() ->
 
 proto() ->
     [
-
         #proto{
             code = 10001
             , req_desc = "这是协议请求描述"

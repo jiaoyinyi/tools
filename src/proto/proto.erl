@@ -12,12 +12,15 @@
 
 %% API
 -export([
-    main/0
+    main/1
 ]).
 
 %% 执行这个方法，读取协议定义文件，验证协议定义，生成协议打包解包文件
-main() ->
-    ProtoCfgs = proto_reader:get_cfgs(),
+-spec main(list()) -> ok.
+main([CfgPath, OutPath]) ->
+    NewCfgPath = atom_to_list(CfgPath),
+    NewOutPath = atom_to_list(OutPath),
+    ProtoCfgs = proto_reader:get_cfgs(NewCfgPath),
     proto_cond:valid(ProtoCfgs),
-    proto_parser:parser(ProtoCfgs).
+    proto_parser:parse(ProtoCfgs, NewOutPath).
 
