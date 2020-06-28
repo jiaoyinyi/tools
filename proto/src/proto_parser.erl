@@ -26,6 +26,8 @@ parse({Mod, Incs, Protos}, OutPath) ->
     Data = string:join([Header, Body], "\n\n"),
     FileName = filename:join([OutPath, lists:concat([Mod, ".erl"])]),
     ok = file:write_file(FileName, Data),
+    Str = unicode:characters_to_binary(io_lib:format("生成解析文件~ts~n", [FileName])),
+    io:format(Str),
     ok.
 
 %% 获取打包解包文件头部
