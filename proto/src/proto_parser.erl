@@ -185,7 +185,10 @@ gen_unpack_data(Filed) ->
 
 %% 生成解包数据尾
 gen_unpack_data_tail(Filed, PreBinIdx) ->
-    io_lib:format("~s{~s,~s};\n", [get_space(1), get_unpack_data_name(Filed), get_bin(PreBinIdx)]).
+    Space = get_space(1),
+    DataName = get_unpack_data_name(Filed),
+    Bin = get_bin(PreBinIdx),
+    io_lib:format("~s<<>> = ~s,\n~s~s;\n", [Space, Bin, Space, DataName]).
 
 %% 第几层 层数*4 第几层，则空格数为层数*4个
 %% {Val3, Bin4} =
