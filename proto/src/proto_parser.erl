@@ -15,6 +15,7 @@
 -include("proto.hrl").
 
 %% 解析协议
+-spec parse(list(), file:filename()) -> ok.
 parse([], _OutPath) ->
     ok;
 parse([I | List], OutPath) ->
@@ -50,7 +51,7 @@ get_proto([#proto{code = Code, req = Req, res = Res} | Protos], Packs, Unpacks) 
     NewReq = deal_filed(Req),
     NewRes = deal_filed(Res),
     Pack = gen_pack(Code, NewReq, NewRes),
-    Unpack = get_unpack(Code, NewReq, NewRes),
+    Unpack = gen_unpack(Code, NewReq, NewRes),
     NewPacks = [Pack | Packs],
     NewUnpacks = [Unpack | Unpacks],
     get_proto(Protos, NewPacks, NewUnpacks).
@@ -147,7 +148,7 @@ gen_pack_bin2(#filed{type = bool, name = Name, idx = Idx}) ->
     io_lib:format("(proto_core:pack_bool(~s))/binary", [Val]).
 
 %% 生成解包
-get_unpack(Code, Req, Res) ->
+gen_unpack(Code, Req, Res) ->
     gen_unpack_func(Code, Req, req) ++ gen_unpack_func(Code, Res, res) ++ "\n".
 
 %% 生成解包方法

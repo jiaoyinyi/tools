@@ -14,7 +14,7 @@
     get_cfgs/1
 ]).
 
-%% 获取协议配置
+%% @doc 获取协议配置
 -spec get_cfgs(string()) -> [{atom(), list(), list()}].
 get_cfgs(CfgPath) ->
     Mods = get_proto_mods(CfgPath),
