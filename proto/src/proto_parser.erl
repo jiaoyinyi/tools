@@ -36,7 +36,7 @@ get_header(Mod, Incs) ->
     ModStr = io_lib:format("-module(~w).\n", [Mod]),
     IncStr = lists:concat([io_lib:format("-include(\"~s\").\n", [I]) || I <- Incs]),
     ExportStr = "-export([pack/3, unpack/3]).\n",
-    string:join([ModStr, IncStr, ExportStr], "\n\n").
+    string:join([ModStr, IncStr, ExportStr], "").
 
 %% 获取打包解包文件内容
 get_body(Protos) ->
@@ -83,7 +83,7 @@ gen_pack_content(Filed = #filed{}) ->
 
 %% 生成打包尾
 gen_pack_tail() ->
-    "pack(Code, _Flag, _Data) ->\n    {error_bad_code, Code}.\n".
+    "pack(Code, _Flag, _Data) ->\n    {error, {error_bad_code, Code}}.\n".
 
 %% 获取打包数据变量名
 get_pack_data_name(#filed{array = true, name = Name, idx = Idx}) ->
@@ -261,7 +261,7 @@ gen_unpack_data2(#filed{type = Type, name = Name, idx = Idx}, PreBinIdx, Layer) 
 
 %% 生成解包方法尾
 gen_unpack_tail() ->
-    "unpack(Code, _Flag, _Bin) ->\n    {error_bad_code, Code}.\n".
+    "unpack(Code, _Flag, _Bin) ->\n    {error, {error_bad_code, Code}}.\n".
 
 %% 获取变量名
 get_val(Name, Idx) ->
