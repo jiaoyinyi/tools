@@ -1,7 +1,5 @@
 .idea
 *.iml
 proto/ebin
-proto/out
-proto/cfg
 erl_crash.dump
 data
