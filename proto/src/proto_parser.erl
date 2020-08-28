@@ -36,7 +36,7 @@ get_header(Mod, Incs) ->
     ModStr = io_lib:format("-module(~w).\n", [Mod]),
     IncStr = lists:concat([io_lib:format("-include(\"~s\").\n", [I]) || I <- Incs]),
     ExportStr = "-export([pack/3, unpack/3]).\n",
-    string:join([ModStr, IncStr, ExportStr], "\n\n").
+    string:join([ModStr, IncStr, ExportStr], "").
 
 %% 获取打包解包文件内容
 get_body(Protos) ->
