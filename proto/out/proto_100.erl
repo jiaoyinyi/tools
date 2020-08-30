@@ -1,8 +1,4 @@
 -module(proto_100).
-
-
-
-
 -export([pack/3, unpack/3]).
 
 
