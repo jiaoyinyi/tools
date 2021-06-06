@@ -7,7 +7,7 @@ INC=inc/
 # 协议配置文件路径
 CFG_PATH=./cfg/
 OUT_PATH=./out/
-PRO_PATH=xxx/
+PRO_PATH=/Users/huangzaoyi/Documents/ProFiles/game_server/yi_server/src/proto/
 
 # 编译源文件
 function make() {
