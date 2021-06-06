@@ -23,7 +23,9 @@ get_cfgs(CfgPath) ->
 %% 获取协议定义文件的模块名
 -spec get_proto_mods(string()) -> [file:filename_all()].
 get_proto_mods(CfgPath) ->
-    FileNames = filelib:wildcard("*.erl", CfgPath),
+    FileNames = filelib:wildcard("proto_[0-9]*.erl", CfgPath),
+    Str = unicode:characters_to_binary(io_lib:format("解析文件~p~n", [FileNames])),
+    io:format(Str),
     [list_to_atom(filename:basename(FileName, ".erl")) || FileName <- FileNames].
 
 %% 获取协议配置文件内容
