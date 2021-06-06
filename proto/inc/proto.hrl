@@ -25,6 +25,7 @@
     ,rec             :: atom()             %% 记录名
     ,data = []       :: list()             %% 数据
     ,array = false   :: boolean()          %% 是否为列表
+    ,default         :: term()             %% 默认值 只在map类型的字段里面使用
     ,idx = 0         :: pos_integer()      %% 字段的唯一id
 }).
 
