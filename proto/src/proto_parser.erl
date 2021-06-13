@@ -22,8 +22,8 @@ parse([I | List], OutPath) ->
     parse(I, OutPath),
     parse(List, OutPath);
 parse({Mod, Incs, Protos}, OutPath) ->
-    Header = get_header(Mod, Incs),
-    Body = get_body(Protos),
+    Header = gen_header(Mod, Incs),
+    Body = gen_body(Protos),
     Data = string:join([Header, Body], "\n\n"),
     FileName = filename:join([OutPath, lists:concat([Mod, ".erl"])]),
     ok = file:write_file(FileName, Data),
@@ -31,19 +31,19 @@ parse({Mod, Incs, Protos}, OutPath) ->
     io:format(Str),
     ok.
 
-%% 获取打包解包文件头部
-get_header(Mod, Incs) ->
+%% 生成打包解包文件头部
+gen_header(Mod, Incs) ->
     ModStr = io_lib:format("-module(~w).\n", [Mod]),
     IncStr = lists:concat([io_lib:format("-include(\"~s\").\n", [I]) || I <- Incs]),
     ExportStr = "-export([pack/3, unpack/3]).\n",
-    string:join([ModStr, IncStr, ExportStr], "").
+    ModStr ++ IncStr ++ ExportStr.
 
-%% 获取打包解包文件内容
-get_body(Protos) ->
-    get_proto(Protos).
+%% 生成打包解包文件内容
+gen_body(Protos) ->
+    gen_proto(Protos).
 
 %% 获取协议打包解包
-get_proto(Protos) ->
+gen_proto(Protos) ->
     get_proto(Protos, [], []).
 get_proto([], Packs, Unpacks) ->
     lists:reverse(Packs) ++ gen_pack_tail() ++ "\n\n" ++ lists:reverse(Unpacks) ++ gen_unpack_tail();
@@ -91,9 +91,21 @@ get_pack_data_name(#filed{array = true, name = Name, idx = Idx}) ->
 get_pack_data_name(#filed{type = tuple, data = Data}) ->
     Content = string:join([get_pack_data_name(D) || D <- Data], ","),
     "{" ++ Content ++ "}";
-get_pack_data_name(#filed{type = map, data = Data}) ->
-    Content = string:join([lists:concat([N, ":=", get_pack_data_name(D)]) || D = #filed{name = N} <- Data], ","),
-    "#{" ++ Content ++ "}";
+get_pack_data_name(#filed{type = map, name = Name, data = Data, idx = Idx}) ->
+    case have_default(Data) of
+        false ->
+            Content = string:join([lists:concat([N, ":=", get_pack_data_name(D)]) || D = #filed{name = N} <- Data], ","),
+            "#{" ++ Content ++ "}";
+        _ -> %% 子字段里有默认值
+            case [D || D = #filed{default = undefined} <- Data] of
+                NoDefaultData = [_ | _] ->
+                    Content = string:join([lists:concat([N, ":=", get_pack_data_name(D)]) || D = #filed{name = N} <- NoDefaultData], ","),
+                    Val = get_val(Name, Idx),
+                    "#{" ++ Content ++ "}=" ++ Val;
+                _ ->
+                    get_val(Name, Idx)
+            end
+    end;
 get_pack_data_name(#filed{type = rec, rec = RecName, data = Data}) ->
     Content = string:join([lists:concat([N, "=", get_pack_data_name(D)]) || D = #filed{name = N} <- Data], ","),
     "#" ++ atom_to_list(RecName) ++ "{" ++ Content ++ "}";
@@ -111,8 +123,14 @@ gen_pack_bin2(Filed = #filed{array = true, name = Name, idx = Idx}) ->
     io_lib:format("(length(~s)):16,(list_to_binary([<<~s>>||~s<-~s]))/binary", [Val, Content, Data, Val]);
 gen_pack_bin2(#filed{type = tuple, data = Data}) ->
     string:join([gen_pack_bin2(D) || D <- Data], ",");
-gen_pack_bin2(#filed{type = map, data = Data}) ->
-    string:join([gen_pack_bin2(D) || D <- Data], ",");
+gen_pack_bin2(#filed{type = map, name = Name, data = Data, idx = Idx}) ->
+    case have_default(Data) of
+        false ->
+            string:join([gen_pack_bin2(D) || D <- Data], ",");
+        _ ->
+            Val = get_val(Name, Idx),
+            string:join([gen_pack_bin3(D, Val) || D <- Data], ",")
+    end;
 gen_pack_bin2(#filed{type = rec, data = Data}) ->
     string:join([gen_pack_bin2(D) || D <- Data], ",");
 
@@ -145,6 +163,55 @@ gen_pack_bin2(#filed{type = string, name = Name, idx = Idx}) ->
     io_lib:format("(proto_core:pack_string(~s))/binary", [Val]);
 gen_pack_bin2(#filed{type = bool, name = Name, idx = Idx}) ->
     Val = get_val(Name, Idx),
+    io_lib:format("(proto_core:pack_bool(~s))/binary", [Val]).
+
+%% map子字段带默认值
+gen_pack_bin3(Filed = #filed{array = true, name = Name, idx = Idx}, _MapName) ->
+    Val = get_val(Name, Idx),
+    NewName = list_to_atom(lists:concat(["_", Name])),
+    Data = get_pack_data_name(Filed#filed{array = false, name = NewName}),
+    Content = gen_pack_bin2(Filed#filed{array = false, name = NewName}),
+    io_lib:format("(length(~s)):16,(list_to_binary([<<~s>>||~s<-~s]))/binary", [Val, Content, Data, Val]);
+gen_pack_bin3(#filed{type = tuple, data = Data}, _MapName) ->
+    string:join([gen_pack_bin2(D) || D <- Data], ",");
+gen_pack_bin3(#filed{type = map, name = Name, data = Data, idx = Idx}, _MapName) ->
+    case have_default(Data) of
+        false ->
+            string:join([gen_pack_bin2(D) || D <- Data], ",");
+        _ ->
+            Val = get_val(Name, Idx),
+            string:join([gen_pack_bin3(D, Val) || D <- Data], ",")
+    end;
+
+gen_pack_bin3(#filed{type = int8, name = Name, idx = Idx, default = Default}, MapName) ->
+    Val = get_map_val(Name, Idx, MapName, Default),
+    Val ++ ":8/signed";
+gen_pack_bin3(#filed{type = uint8, name = Name, idx = Idx, default = Default}, MapName) ->
+    Val = get_map_val(Name, Idx, MapName, Default),
+    Val ++ ":8";
+gen_pack_bin3(#filed{type = int16, name = Name, idx = Idx, default = Default}, MapName) ->
+    Val = get_map_val(Name, Idx, MapName, Default),
+    Val ++ ":16/signed";
+gen_pack_bin3(#filed{type = uint16, name = Name, idx = Idx, default = Default}, MapName) ->
+    Val = get_map_val(Name, Idx, MapName, Default),
+    Val ++ ":16";
+gen_pack_bin3(#filed{type = int32, name = Name, idx = Idx, default = Default}, MapName) ->
+    Val = get_map_val(Name, Idx, MapName, Default),
+    Val ++ ":32/signed";
+gen_pack_bin3(#filed{type = uint32, name = Name, idx = Idx, default = Default}, MapName) ->
+    Val = get_map_val(Name, Idx, MapName, Default),
+    Val ++ ":32";
+gen_pack_bin3(#filed{type = int64, name = Name, idx = Idx, default = Default}, MapName) ->
+    Val = get_map_val(Name, Idx, MapName, Default),
+    Val ++ ":64/signed";
+gen_pack_bin3(#filed{type = uint64, name = Name, idx = Idx, default = Default}, MapName) ->
+    Val = get_map_val(Name, Idx, MapName, Default),
+    Val ++ ":64";
+gen_pack_bin3(#filed{type = string, name = Name, idx = Idx, default = Default}, MapName) ->
+    Val = get_map_val(Name, Idx, MapName, Default),
+    io_lib:format("(proto_core:pack_string(~s))/binary", [Val]);
+gen_pack_bin3(#filed{type = bool, name = Name, idx = Idx, default = Default}, MapName) ->
+    Val = get_map_val(Name, Idx, MapName, Default),
     io_lib:format("(proto_core:pack_bool(~s))/binary", [Val]).
 
 %% 生成解包
@@ -266,6 +333,11 @@ gen_unpack_tail() ->
 %% 获取变量名
 get_val(Name, Idx) ->
     lists:concat(["Val_", Name, "_", Idx]).
+%% 获取map变量名
+get_map_val(Name, _Idx, MapName, Default) when Default =/= undefined ->
+    io_lib:format("(maps:get(~w,~s,~w))", [Name, MapName, Default]);
+get_map_val(Name, Idx, _MapName, _Default) ->
+    get_val(Name, Idx).
 
 %% 获取Bin变量名
 get_bin(0) ->
@@ -306,3 +378,11 @@ add_idx([Filed = #filed{data = Data} | Fileds], Acc, Idx) ->
 %% 获取空格
 get_space(Layer) ->
     [32 || _ <- lists:seq(1, Layer * 4)].
+
+%% 是否有默认值
+have_default([]) ->
+    false;
+have_default([#filed{default = Default} | _Data]) when Default =/= undefined ->
+    true;
+have_default([_Filed | Data]) ->
+    have_default(Data).

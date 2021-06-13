@@ -63,7 +63,7 @@ valid_desc(Desc) ->
 
 %% 验证字段
 %% 判断相同层有相同的字段名
-%% 判断tuple、map、rec类型的data是否为空
+%% 判断tuple、map、rec类型的data是否为空，array、tuple、map、rec字段不能有默认值
 %% 判断类型是否正确
 valid_filed([]) ->
     true;
@@ -71,15 +71,20 @@ valid_filed(Fileds) when is_list(Fileds) ->
     valid_filed(Fileds, []).
 valid_filed([], _FiledNames) ->
     true;
-valid_filed([Filed = #filed{name = Name, type = Type, data = Data} | Fileds], FiledNames) when Type == tuple orelse Type == map orelse Type == rec ->
+valid_filed([Filed = #filed{name = Name, type = Type, data = Data, default = Default} | Fileds], FiledNames) when Type == tuple orelse Type == map orelse Type == rec ->
     case lists:member(Name, FiledNames) of
         false ->
-            case length(Data) > 0 of
+            case Default =:= undefined of
                 true ->
-                    valid_filed(Data),
-                    valid_filed(Fileds, [Name | FiledNames]);
+                    case length(Data) > 0 of
+                        true ->
+                            valid_filed(Data),
+                            valid_filed(Fileds, [Name | FiledNames]);
+                        _ ->
+                            exit({error_data_empty, Filed})
+                    end;
                 _ ->
-                    exit({error_data_empty, Filed})
+                    exit({error_have_default, Filed})
             end;
         _ ->
             exit({error_same_name, Name})

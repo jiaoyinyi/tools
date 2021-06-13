@@ -4,3 +4,4 @@ proto/ebin
 proto/out
 erl_crash.dump
 data
+.DS_Store

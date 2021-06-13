@@ -20,11 +20,11 @@ proto() ->
             , req = [
                 #filed{type = map, name = test_map, desc = "测试map", data = [
                     #filed{type = uint32, name = id, desc = "角色ID", default = 0}
-                    ,#filed{type = string, name = name, desc = "角色名", default = <<>>}
-                ]},
-                #filed{type = tuple, name = list, desc = "测试list", array = true, data = [
-                    #filed{type = uint32, name = id, desc = "角色ID", default = 0}
-                    ,#filed{type = string, name = name, desc = "角色名", default = <<>>}
+                    , #filed{type = string, name = name, desc = "角色名", default = <<>>}
+                    , #filed{type = map, name = test_map2, data = [
+                        #filed{type = uint32, name = id, desc = "角色ID", default = 0}
+                        , #filed{type = string, name = name, desc = "角色名"}
+                    ]}
                 ]}
             ]
             , res_desc = "获取服务器角色信息"
