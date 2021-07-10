@@ -18,35 +18,45 @@ ROOT=$(get_root)
 source ${ROOT}/setting.sh
 
 # 定义字典
-declare -A cfg
-cfg[root]=${ROOT}
-cfg[server_path]=${SERVER_PATH}
-cfg[proto_path]=${SERVER_PATH}/src/proto/
+declare -A CFG
+CFG[root]=${ROOT}
+CFG[code_path]=${CODE_PATH}
+CFG[proto_path]=${CODE_PATH}/src/proto/
 
-if [ ! $msg ]; then
-    declare -A msg
-fi
+declare -A MSG
 
 # 获取依赖库
-msg[gen_proto]="生协议解析文件"
+MSG[gen_proto]="生协议解析文件"
 function gen_proto() {
-    cd ${cfg[root]}/proto && sh gen_proto.sh gen_proto $cfg[proto_path] $@
+    cd ${CFG[root]}/proto && sh gen_proto.sh gen_proto ${CFG[proto_path]} $@
 }
 
 # 获取依赖库
-msg[gen_proto_cfg]="生成协议配置模块"
+MSG[gen_proto_cfg]="生成协议配置模块(gen_proto_cfg:file)"
 function gen_proto_cfg() {
-    cd ${cfg[root]}/proto && sh gen_proto.sh gen_proto_cfg $@
+    cd ${CFG[root]}/proto && sh gen_proto.sh gen_proto_cfg $@
 }
 
 function help() {
     printf "请输入以下指令：\n"
-    for key in "${!msg[@]}"; do
-        printf "%-20s%s\n" $key ${msg[$key]}
+    for key in "${!MSG[@]}"; do
+        printf "%-20s%s\n" $key ${MSG[$key]}
     done
 }
 
-if [[ ${!msg[@]} =~ $1 ]]; then
+# 检查键是否在字典中
+check_key_in_dict() {
+    dict=$1
+    check=$2
+    for key in "${!dict[@]}"; do
+      if [[ ${check} == ${key} ]]; then
+          return 0
+      fi
+    done
+    return 1
+}
+
+if [[ $(check_key_in_dict ${MSG} $1) == 0 ]]; then
     cmd=$1
     args=${@:2}
     ${cmd} ${args}
